@@ -2,7 +2,7 @@ from typing import Tuple
 
 import torch
 import torch.nn as nn
-from moduleZoo.convolution import Conv2DNormActivation
+from moduleZoo import Conv2DNormActivation
 
 from .autoencoder import Decoder, Encoder
 

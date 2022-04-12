@@ -1,11 +1,9 @@
-from turtle import forward
 from typing import List, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from matplotlib.pyplot import cla
-from moduleZoo.convolution import Conv2DNormActivation
+from moduleZoo import Conv2DNormActivation
 
 
 class Encoder(nn.Module):
