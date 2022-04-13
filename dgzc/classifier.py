@@ -1,5 +1,6 @@
 from typing import Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 from moduleZoo import Conv2DNormActivation
@@ -50,6 +51,7 @@ class ClassificationBackbone(nn.Module):
         self.in_dim = in_dim
         self.img_size = img_size
         self.l = l
+        # self.const255 = torch.Tensor([255.])
         self.encoder = Encoder(self.img_size, 3, self.in_dim)
         self.attention1 = SelfAttention(self.in_dim, nn.SELU)
         self.conv1 = Conv2DNormActivation(self.in_dim, 50, kernel_size=3,
@@ -72,7 +74,7 @@ class ClassificationBackbone(nn.Module):
     def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
         B, _, _, _ = x.size()
         # Illumination consistency layer
-        x_il = torch.pow(x, self.l)/(255.**self.l) # [B, C, H, W]
+        x_il = torch.pow(x*255., self.l)/np.power(255., self.l) # [B, C, H, W]
 
         x = torch.cat([x_il, x], dim=0) # [2*B, C, H, W]
         x = self.encoder(x) # [2*B, C, H, W]
@@ -89,6 +91,58 @@ class ClassificationBackbone(nn.Module):
         x_il = self.attention3(self.conv4(x_il))
 
         return x_il, x
+
+class ClassificationBackbone2(nn.Module):
+
+    def __init__(self, in_dim:int = 40, l:float = 1/4, img_size: Tuple[int, int] = (200, 200)) -> None:
+        super().__init__()
+
+        self.in_dim = in_dim
+        self.img_size = img_size
+        self.l = l
+        # self.const255 = torch.Tensor([255.])
+        self.encoder = Encoder(self.img_size, 3, self.in_dim)
+        self.attention1 = SelfAttention(self.in_dim, nn.SELU)
+        self.conv1 = Conv2DNormActivation(self.in_dim, 50, kernel_size=3,
+                                          stride=2, padding=0, norm_layer=None,
+                                          activation_layer=nn.SELU)
+        self.attention2 = SelfAttention(50, nn.SELU)
+        self.conv2 = Conv2DNormActivation(50, 40, kernel_size=3,
+                                          stride=2, padding=0, norm_layer=None,
+                                          activation_layer=nn.SELU)
+        self.conv3 = Conv2DNormActivation(40, 30, kernel_size=3,
+                                          stride=2, padding=0, norm_layer=nn.BatchNorm2d,
+                                          activation_layer=nn.SELU)
+        self.conv4 = Conv2DNormActivation(30, 20, kernel_size=3,
+                                          stride=2, padding=0, norm_layer=None,
+                                          activation_layer=nn.SELU)
+
+        self.linear1 = nn.Linear(20, 10)
+        self.linear2 = nn.Linear(10, 5)
+
+        self.activation = nn.SELU()
+        self.classifier = nn.Softmax(dim=1)
+
+    def forward(self, x) -> torch.Tensor:
+        # Illumination consistency layer
+        x_il = torch.pow(x*255., self.l)/np.power(255., self.l) # [B, C, H, W]
+
+        x_il = self.encoder(x) # [2*B, C, H, W]
+
+        x_il = self.attention1(x_il)
+        x_il = self.conv1(x_il)
+
+        x_il = self.attention2(x_il)
+        x_il = self.conv2(x_il)
+        x_il = self.conv3(x_il)
+        x_il = self.conv4(x_il)
+
+        x_il = x_il.flatten(start_dim = 1)
+
+        x_il = self.activation(self.linear1(x_il))
+        x_il = self.classifier(self.linear2(x_il))
+
+        return x_il
 
 class AutoEncoderClassifierAmalgamation(ClassificationBackbone):
 

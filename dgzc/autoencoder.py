@@ -73,7 +73,7 @@ class Decoder(nn.Module):
                                           activation_layer=nn.SELU, transposed=True)
         self.conv6 = Conv2DNormActivation(5, 3, kernel_size=3,
                                           stride=1, padding=0, norm_layer=None,
-                                          activation_layer=nn.SELU, transposed=False)
+                                          activation_layer=nn.Sigmoid, transposed=False)
 
     def forward(self, x:torch.Tensor):
         x = self.conv1(x)
